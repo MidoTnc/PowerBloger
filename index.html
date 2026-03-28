@@ -803,6 +803,14 @@
               <span className={`hidden ${isSidebarExpanded ? 'md:inline' : ''}`}>설정</span>
             </button>
 
+            <button onClick={() => setShowNotifications(true)} className="relative flex items-center gap-2 md:gap-3 px-2.5 py-2 md:py-3 rounded-xl transition-all whitespace-nowrap flex-shrink-0 text-xs md:text-base hover:bg-gray-100 text-gray-600">
+              <i className="fa-solid fa-bell w-5 h-5 flex items-center justify-center text-lg"></i>
+              {urgentCampaigns.length > 0 && (
+                <span className="absolute top-1 left-6 md:left-7 w-4 h-4 bg-red-500 text-white text-[0.5rem] font-bold rounded-full flex items-center justify-center">{urgentCampaigns.length}</span>
+              )}
+              <span className={`hidden ${isSidebarExpanded ? 'md:inline' : ''}`}>알림</span>
+            </button>
+
             <div className={`mt-auto p-4 bg-gray-50 rounded-xl border border-gray-100 text-sm text-gray-500 leading-relaxed hidden ${isSidebarExpanded ? 'md:block' : 'md:hidden'}`}>
               <i className="fa-solid fa-circle-info text-[#03C75A] mr-1"></i><br/>
               한 번에 <b>3가지 버전</b>의 포스팅 초안을 생성합니다.
@@ -817,44 +825,6 @@
 
           {/* Main Content */}
           <main className="flex-1 p-4 md:p-8 overflow-y-auto scroll-smooth relative">
-            {/* 알림 벨 - 우측 고정 */}
-            <div className="flex justify-end mb-2 md:mb-0 md:absolute md:top-4 md:right-4 z-30">
-              <button onClick={() => setShowNotifications(!showNotifications)} className="relative p-2 bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-all">
-                <i className="fa-solid fa-bell text-base text-gray-500"></i>
-                {urgentCampaigns.length > 0 && (
-                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[0.625rem] font-bold rounded-full flex items-center justify-center">{urgentCampaigns.length}</span>
-                )}
-              </button>
-              {showNotifications && (
-                <div className="absolute right-0 top-10 w-72 md:w-80 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-50">
-                  <div className="px-4 py-3 bg-gray-50 border-b border-gray-100 flex justify-between items-center">
-                    <h4 className="font-bold text-sm text-gray-800 flex items-center gap-2"><i className="fa-solid fa-bell text-[#03C75A]"></i> 마감 알림</h4>
-                    <button onClick={() => setShowNotifications(false)} className="text-gray-400 hover:text-gray-600"><i className="fa-solid fa-xmark"></i></button>
-                  </div>
-                  <div className="max-h-64 overflow-y-auto">
-                    {urgentCampaigns.length === 0 ? (
-                      <div className="p-5 text-center text-gray-400">
-                        <i className="fa-solid fa-circle-check text-xl mb-1 text-[#03C75A]"></i>
-                        <p className="text-xs">3일 이내 마감 없음</p>
-                      </div>
-                    ) : (
-                      urgentCampaigns.map(c => (
-                        <div key={c.id} className="px-4 py-2.5 border-b border-gray-50 flex items-center gap-3">
-                          <span className={`text-xs font-bold px-2 py-0.5 rounded ${c.daysLeft <= 0 ? 'bg-red-100 text-red-600' : c.daysLeft <= 1 ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-600'}`}>
-                            {c.daysLeft <= 0 ? `D+${Math.abs(c.daysLeft)}` : c.daysLeft === 0 ? 'D-Day' : `D-${c.daysLeft}`}
-                          </span>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold text-gray-800 truncate">{c.title}</p>
-                            <p className="text-xs text-gray-400">{c.site}</p>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-
             {(activeTab === 'learning' || activeTab === 'generation') && (
               <div className="mb-6 md:mb-8">
                 <h2 className="text-xs md:text-sm font-bold text-gray-500 mb-2 md:mb-3 uppercase tracking-wider">카테고리 선택</h2>
@@ -1315,6 +1285,38 @@
               </div>
             )}
           </main>
+
+          {/* 알림 모달 */}
+          {showNotifications && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/40 backdrop-blur-sm p-4" onClick={() => setShowNotifications(false)}>
+              <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden" onClick={(e) => e.stopPropagation()}>
+                <div className="px-5 py-4 border-b border-gray-100 flex justify-between items-center">
+                  <h4 className="font-bold text-base text-gray-800 flex items-center gap-2"><i className="fa-solid fa-bell text-[#03C75A]"></i> 마감 알림</h4>
+                  <button onClick={() => setShowNotifications(false)} className="text-gray-400 hover:text-gray-600 p-1"><i className="fa-solid fa-xmark text-lg"></i></button>
+                </div>
+                <div className="max-h-80 overflow-y-auto">
+                  {urgentCampaigns.length === 0 ? (
+                    <div className="p-8 text-center text-gray-400">
+                      <i className="fa-solid fa-circle-check text-3xl mb-2 text-[#03C75A]"></i>
+                      <p className="text-sm font-medium">3일 이내 마감 캠페인이 없습니다</p>
+                    </div>
+                  ) : (
+                    urgentCampaigns.map(c => (
+                      <div key={c.id} className={`px-5 py-3 border-b border-gray-50 flex items-center gap-3 ${c.daysLeft <= 0 ? 'bg-red-50' : ''}`}>
+                        <span className={`text-xs font-bold px-2.5 py-1 rounded-lg flex-shrink-0 ${c.daysLeft <= 0 ? 'bg-red-100 text-red-600' : c.daysLeft <= 1 ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-600'}`}>
+                          {c.daysLeft < 0 ? `D+${Math.abs(c.daysLeft)}` : c.daysLeft === 0 ? 'D-Day' : `D-${c.daysLeft}`}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-gray-800 truncate">{c.title}</p>
+                          <p className="text-xs text-gray-400 mt-0.5">{c.site} · 마감 {c.deadline}</p>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       );
     }
