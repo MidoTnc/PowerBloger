@@ -817,40 +817,35 @@
 
           {/* Main Content */}
           <main className="flex-1 p-4 md:p-8 overflow-y-auto scroll-smooth relative">
-            
-            {/* 알림 벨 */}
-            <div className="absolute top-0 right-0 z-30">
-              <button onClick={() => setShowNotifications(!showNotifications)} className="relative p-2.5 bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-all">
-                <i className="fa-solid fa-bell text-lg text-gray-600"></i>
+            {/* 알림 벨 - 우측 고정 */}
+            <div className="flex justify-end mb-2 md:mb-0 md:absolute md:top-4 md:right-4 z-30">
+              <button onClick={() => setShowNotifications(!showNotifications)} className="relative p-2 bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-all">
+                <i className="fa-solid fa-bell text-base text-gray-500"></i>
                 {urgentCampaigns.length > 0 && (
-                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[0.625rem] font-bold rounded-full flex items-center justify-center animate-pulse">{urgentCampaigns.length}</span>
+                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[0.625rem] font-bold rounded-full flex items-center justify-center">{urgentCampaigns.length}</span>
                 )}
               </button>
-
               {showNotifications && (
-                <div className="absolute right-0 top-12 w-80 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="absolute right-0 top-10 w-72 md:w-80 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-50">
                   <div className="px-4 py-3 bg-gray-50 border-b border-gray-100 flex justify-between items-center">
                     <h4 className="font-bold text-sm text-gray-800 flex items-center gap-2"><i className="fa-solid fa-bell text-[#03C75A]"></i> 마감 알림</h4>
                     <button onClick={() => setShowNotifications(false)} className="text-gray-400 hover:text-gray-600"><i className="fa-solid fa-xmark"></i></button>
                   </div>
-                  <div className="max-h-80 overflow-y-auto">
+                  <div className="max-h-64 overflow-y-auto">
                     {urgentCampaigns.length === 0 ? (
-                      <div className="p-6 text-center text-gray-400">
-                        <i className="fa-solid fa-circle-check text-2xl mb-2 text-[#03C75A]"></i>
-                        <p className="text-sm">3일 이내 마감 캠페인이 없습니다.</p>
+                      <div className="p-5 text-center text-gray-400">
+                        <i className="fa-solid fa-circle-check text-xl mb-1 text-[#03C75A]"></i>
+                        <p className="text-xs">3일 이내 마감 없음</p>
                       </div>
                     ) : (
                       urgentCampaigns.map(c => (
-                        <div key={c.id} className={`px-4 py-3 border-b border-gray-50 flex items-start gap-3 ${c.daysLeft <= 0 ? 'bg-red-50' : c.daysLeft <= 1 ? 'bg-yellow-50' : ''}`}>
-                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 text-xs font-bold ${c.daysLeft <= 0 ? 'bg-red-500 text-white' : c.daysLeft <= 1 ? 'bg-yellow-500 text-white' : 'bg-gray-200 text-gray-600'}`}>
-                            {c.daysLeft <= 0 ? '!' : `D-${c.daysLeft}`}
-                          </div>
+                        <div key={c.id} className="px-4 py-2.5 border-b border-gray-50 flex items-center gap-3">
+                          <span className={`text-xs font-bold px-2 py-0.5 rounded ${c.daysLeft <= 0 ? 'bg-red-100 text-red-600' : c.daysLeft <= 1 ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-600'}`}>
+                            {c.daysLeft <= 0 ? `D+${Math.abs(c.daysLeft)}` : c.daysLeft === 0 ? 'D-Day' : `D-${c.daysLeft}`}
+                          </span>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-semibold text-gray-800 truncate">{c.title}</p>
-                            <p className="text-xs text-gray-500 mt-0.5">{c.site} · 마감 {c.deadline}</p>
-                            {c.daysLeft < 0 && <p className="text-xs text-red-500 font-bold mt-0.5">마감 지남! ({Math.abs(c.daysLeft)}일 초과)</p>}
-                            {c.daysLeft === 0 && <p className="text-xs text-red-500 font-bold mt-0.5">오늘 마감!</p>}
-                            {c.daysLeft === 1 && <p className="text-xs text-yellow-600 font-bold mt-0.5">내일 마감!</p>}
+                            <p className="text-xs text-gray-400">{c.site}</p>
                           </div>
                         </div>
                       ))
@@ -858,6 +853,9 @@
                   </div>
                 </div>
               )}
+            </div>
+
+            
             </div>
 
             {(activeTab === 'learning' || activeTab === 'generation') && (
@@ -1062,7 +1060,7 @@
                 <div className="mb-6 flex justify-between items-center">
                   <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2"><i className="fa-regular fa-calendar text-2xl text-[#03C75A]"></i> 협찬 & 일정 관리</h2>
                   <button onClick={() => setShowSiteManager(!showSiteManager)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${showSiteManager ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'}`}>
-                    <i className="fa-solid fa-gear"></i> 플랫폼 관리
+                    <i className="fa-solid fa-gear"></i> <span className="hidden md:inline">플랫폼</span> 관리
                   </button>
                 </div>
 
@@ -1169,8 +1167,8 @@
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                     <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100"><p className="text-xs text-gray-500 mb-1">총 누적 협찬 가치</p><p className="text-2xl font-bold text-gray-900 mt-2">{totalSponsorAmount.toLocaleString()}<span className="text-sm ml-1">원</span></p></div>
                     <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100"><p className="text-xs text-gray-500 mb-1">수령 완료 가치</p><p className="text-2xl font-bold text-[#03C75A] mt-2">{completedSponsorAmount.toLocaleString()}<span className="text-sm ml-1">원</span></p></div>
-                    <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100"><p className="text-xs text-gray-500 mb-1">진행 중인 가치</p><p className="text-2xl font-bold text-red-500 mt-2">{(totalSponsorAmount - completedSponsorAmount).toLocaleString()}<span className="text-sm ml-1">원</span></p></div>
-                    <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl p-5 shadow-md text-white"><p className="text-xs text-green-300 mb-1">전체 달성률</p><div className="flex items-end gap-2 mt-2"><p className="text-3xl font-bold">{totalSponsorAmount > 0 ? Math.round((completedSponsorAmount / totalSponsorAmount) * 100) : 0}<span className="text-lg ml-1">%</span></p></div></div>
+                    <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100"><p className="text-xs text-gray-500 mb-1">진행 중인 가치</p><p className="text-2xl font-bold text-gray-700 mt-2">{(totalSponsorAmount - completedSponsorAmount).toLocaleString()}<span className="text-sm ml-1">원</span></p></div>
+                    <div className="bg-green-50 rounded-2xl p-5 shadow-sm border border-green-100"><p className="text-xs text-[#03C75A] mb-1">전체 달성률</p><div className="flex items-end gap-2 mt-2"><p className="text-3xl font-bold text-gray-900">{totalSponsorAmount > 0 ? Math.round((completedSponsorAmount / totalSponsorAmount) * 100) : 0}<span className="text-lg ml-1">%</span></p></div></div>
                   </div>
                   <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2"><i className="fa-solid fa-chart-simple text-gray-600"></i> 플랫폼별 상세 분석</h3>
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -1204,12 +1202,12 @@
               <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 h-full flex flex-col relative">
                 <div className="mb-4 md:mb-6"><h2 className="text-xl md:text-2xl font-bold text-gray-900 flex items-center gap-2"><i className="fa-solid fa-arrow-trend-up text-2xl text-[#03C75A]"></i> 광고수익 기록</h2></div>
                 <div className="flex flex-col gap-3 md:gap-4 mb-4 md:mb-6">
-                  <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl p-5 md:p-6 shadow-md text-white flex-shrink-0">
-                    <h3 className="text-xs md:text-sm font-semibold text-gray-300 mb-3 md:mb-4 flex items-center gap-2"><i className="fa-solid fa-wand-magic-sparkles text-[#03C75A]"></i> 역대 누적 애드포스트 성과</h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6 divide-y sm:divide-y-0 sm:divide-x divide-gray-700">
-                      <div className="pt-2 sm:pt-0"><p className="text-gray-400 text-[0.625rem] md:text-xs mb-0.5 md:mb-1">총 누적 수익</p><p className="text-2xl md:text-3xl font-bold">{allTimeTotal.toLocaleString()}원</p></div>
-                      <div className="pt-3 sm:pt-0 sm:pl-4 md:pl-6"><p className="text-gray-400 text-[0.625rem] md:text-xs mb-0.5 md:mb-1">전체 일 평균 수익</p><p className="text-lg md:text-xl font-semibold">{allTimeAvg.toLocaleString()}원</p></div>
-                      <div className="pt-3 sm:pt-0 sm:pl-4 md:pl-6"><p className="text-gray-400 text-[0.625rem] md:text-xs mb-0.5 md:mb-1">역대 최고 매출 (1일)</p><p className="text-lg md:text-xl font-semibold">{allTimeMax.toLocaleString()}원</p></div>
+                  <div className="bg-white rounded-2xl p-5 md:p-6 shadow-sm border border-gray-100 flex-shrink-0">
+                    <h3 className="text-xs md:text-sm font-semibold text-gray-700 mb-3 md:mb-4 flex items-center gap-2"><i className="fa-solid fa-wand-magic-sparkles text-[#03C75A]"></i> 역대 누적 애드포스트 성과</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6 divide-y sm:divide-y-0 sm:divide-x divide-gray-200">
+                      <div className="pt-2 sm:pt-0"><p className="text-gray-500 text-[0.625rem] md:text-xs mb-0.5 md:mb-1">총 누적 수익</p><p className="text-2xl md:text-3xl font-bold text-gray-900">{allTimeTotal.toLocaleString()}원</p></div>
+                      <div className="pt-3 sm:pt-0 sm:pl-4 md:pl-6"><p className="text-gray-500 text-[0.625rem] md:text-xs mb-0.5 md:mb-1">전체 일 평균 수익</p><p className="text-lg md:text-xl font-semibold text-gray-800">{allTimeAvg.toLocaleString()}원</p></div>
+                      <div className="pt-3 sm:pt-0 sm:pl-4 md:pl-6"><p className="text-gray-500 text-[0.625rem] md:text-xs mb-0.5 md:mb-1">역대 최고 매출 (1일)</p><p className="text-lg md:text-xl font-semibold text-gray-800">{allTimeMax.toLocaleString()}원</p></div>
                     </div>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4">
@@ -1228,13 +1226,13 @@
                   </div>
                 </div>
 
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 md:p-6 flex-1 flex flex-col min-h-[400px]">
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 md:p-6 flex flex-col">
                   <div className="flex justify-between items-center mb-4 md:mb-6">
                     <button onClick={handlePrevMonth} className="p-1.5 md:p-2 hover:bg-gray-100 rounded-lg"><i className="fa-solid fa-chevron-left text-xl text-gray-600"></i></button>
                     <h3 className="text-base md:text-lg font-bold text-gray-800">{currentDate.getFullYear()}년 {currentDate.getMonth() + 1}월</h3>
                     <button onClick={handleNextMonth} className="p-1.5 md:p-2 hover:bg-gray-100 rounded-lg"><i className="fa-solid fa-chevron-right text-xl text-gray-600"></i></button>
                   </div>
-                  <div className="grid grid-cols-7 gap-px bg-gray-200 border border-gray-200 rounded-xl overflow-hidden flex-1">
+                  <div className="grid grid-cols-7 gap-px bg-gray-200 border border-gray-200 rounded-xl overflow-hidden">
                     {['일', '월', '화', '수', '목', '금', '토'].map((day, i) => <div key={day} className={`bg-gray-50 py-2 text-center text-xs md:text-sm font-semibold ${i === 0 ? 'text-red-500' : i === 6 ? 'text-[#03C75A]' : 'text-gray-700'}`}>{day}</div>)}
                     {Array.from({ length: getFirstDayOfMonth(currentDate.getFullYear(), currentDate.getMonth()) }).map((_, i) => <div key={`empty-${i}`} className="bg-white min-h-[60px] md:min-h-[90px]" />)}
                     {Array.from({ length: getDaysInMonth(currentDate.getFullYear(), currentDate.getMonth()) }).map((_, i) => {
@@ -1298,7 +1296,7 @@
                       <button 
                         onClick={() => { saveBlogName(editingBlogName); setEditingBlogName(''); alert('블로그명이 변경되었습니다!'); }} 
                         disabled={!editingBlogName || editingBlogName === blogName}
-                        className="px-5 py-3 bg-[#03C75A] text-white font-semibold rounded-xl text-sm disabled:opacity-50 hover:bg-[#02b350]">
+                        className="px-5 py-3 bg-[#03C75A] text-white font-semibold rounded-xl text-sm disabled:opacity-50 hover:bg-[#02b350] whitespace-nowrap">
                         저장
                       </button>
                     </div>
