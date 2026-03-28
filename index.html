@@ -249,7 +249,10 @@
       const [isGenerating, setIsGenerating] = useState(false);
       const [copied, setCopied] = useState(false);
 
-      const SPONSOR_SITES = ['레뷰', '디너의여왕', '강남맛집', '링블', '리플', '개인협찬', '기타'];
+      const DEFAULT_SITES = ['레뷰', '디너의여왕', '강남맛집', '링블', '리플', '개인협찬', '기타'];
+      const [sponsorSites, setSponsorSites] = useState(DEFAULT_SITES);
+      const [showSiteManager, setShowSiteManager] = useState(false);
+      const [newSiteName, setNewSiteName] = useState('');
       const [campaigns, setCampaigns] = useState([]);
       
       const [newCampaign, setNewCampaign] = useState({ 
@@ -302,10 +305,24 @@
 
         const samplesRef = db.doc(`artifacts/${appId}/users/${user.uid}/appData/samplePosts`);
         const unsubSamples = samplesRef.onSnapshot((docSnap) => {
-          if (docSnap.exists) setSamplePosts(prev => ({...prev, ...docSnap.data().data}));
+          if (docSnap.exists) {
+            const raw = docSnap.data().data;
+            const clean = {};
+            CATEGORIES.forEach(cat => {
+              clean[cat] = Array.isArray(raw[cat]) ? [...raw[cat]] : [];
+            });
+            setSamplePosts(clean);
+          }
         }, handleError);
 
-        return () => { unsubStyles(); unsubCampaigns(); unsubRevenue(); unsubSamples(); };
+        const sitesRef = db.doc(`artifacts/${appId}/users/${user.uid}/appData/sponsorSites`);
+        const unsubSites = sitesRef.onSnapshot((docSnap) => {
+          if (docSnap.exists && Array.isArray(docSnap.data().data)) {
+            setSponsorSites(docSnap.data().data);
+          }
+        }, handleError);
+
+        return () => { unsubStyles(); unsubCampaigns(); unsubRevenue(); unsubSamples(); unsubSites(); };
       }, [user]);
 
       const updateLearnedStyles = async (newStyles) => {
@@ -351,11 +368,14 @@
       };
 
       const updateSamplePosts = async (newSamples) => {
-        setSamplePosts(newSamples);
+        // 깊은 복사로 카테고리 간 참조 격리
+        const cloned = {};
+        CATEGORIES.forEach(cat => { cloned[cat] = Array.isArray(newSamples[cat]) ? [...newSamples[cat]] : []; });
+        setSamplePosts(cloned);
         if (user) {
           setIsSyncing(true);
           try {
-            await db.doc(`artifacts/${appId}/users/${user.uid}/appData/samplePosts`).set({ data: newSamples });
+            await db.doc(`artifacts/${appId}/users/${user.uid}/appData/samplePosts`).set({ data: cloned });
             setDbError(false);
           } catch (e) {
             if (e.code === 'permission-denied') setDbError(true);
@@ -367,9 +387,11 @@
       // 예시 글 추가
       const handleAddSample = () => {
         if (!learningInput.trim()) return alert("블로그 글을 입력해주세요!");
-        const current = samplePosts[activeCategory] || [];
+        const current = samplePosts[activeCategory] ? [...samplePosts[activeCategory]] : [];
         if (current.length >= MAX_SAMPLES) return alert(`카테고리당 최대 ${MAX_SAMPLES}개까지 저장할 수 있습니다.`);
-        const updated = { ...samplePosts, [activeCategory]: [...current, learningInput.trim()] };
+        current.push(learningInput.trim());
+        const updated = {};
+        CATEGORIES.forEach(cat => { updated[cat] = cat === activeCategory ? current : [...(samplePosts[cat] || [])]; });
         updateSamplePosts(updated);
         setLearningInput('');
         alert('예시 글이 저장되었습니다!');
@@ -378,9 +400,10 @@
       // 예시 글 수정 저장
       const handleUpdateSample = () => {
         if (!learningInput.trim()) return alert("블로그 글을 입력해주세요!");
-        const current = [...(samplePosts[activeCategory] || [])];
+        const current = samplePosts[activeCategory] ? [...samplePosts[activeCategory]] : [];
         current[editingPostIndex] = learningInput.trim();
-        const updated = { ...samplePosts, [activeCategory]: current };
+        const updated = {};
+        CATEGORIES.forEach(cat => { updated[cat] = cat === activeCategory ? current : [...(samplePosts[cat] || [])]; });
         updateSamplePosts(updated);
         setLearningInput('');
         setEditingPostIndex(null);
@@ -390,11 +413,11 @@
       // 예시 글 삭제
       const handleDeleteSample = (index) => {
         if (!confirm(`${index + 1}번 예시 글을 삭제하시겠습니까?`)) return;
-        const current = [...(samplePosts[activeCategory] || [])];
+        const current = samplePosts[activeCategory] ? [...samplePosts[activeCategory]] : [];
         current.splice(index, 1);
-        const updated = { ...samplePosts, [activeCategory]: current };
+        const updated = {};
+        CATEGORIES.forEach(cat => { updated[cat] = cat === activeCategory ? current : [...(samplePosts[cat] || [])]; });
         updateSamplePosts(updated);
-        // 학습 결과도 초기화 (원문이 바뀌었으니)
         updateLearnedStyles({ ...learnedStyles, [activeCategory]: '예시 글이 변경되었습니다. 다시 학습을 실행해주세요.' });
       };
 
@@ -408,6 +431,37 @@
       const handleCancelEdit = () => {
         setEditingPostIndex(null);
         setLearningInput('');
+      };
+
+      // 플랫폼 목록 저장
+      const updateSponsorSites = async (newSites) => {
+        setSponsorSites(newSites);
+        if (user) {
+          setIsSyncing(true);
+          try {
+            await db.doc(`artifacts/${appId}/users/${user.uid}/appData/sponsorSites`).set({ data: newSites });
+            setDbError(false);
+          } catch (e) {
+            if (e.code === 'permission-denied') setDbError(true);
+          }
+          setIsSyncing(false);
+        }
+      };
+
+      // 플랫폼 추가
+      const handleAddSite = () => {
+        const name = newSiteName.trim();
+        if (!name) return;
+        if (sponsorSites.includes(name)) return alert('이미 존재하는 플랫폼입니다.');
+        updateSponsorSites([...sponsorSites, name]);
+        setNewSiteName('');
+      };
+
+      // 플랫폼 삭제
+      const handleDeleteSite = (siteName) => {
+        const used = campaigns.some(c => c.site === siteName);
+        if (used && !confirm(`"${siteName}"에 등록된 캠페인이 있습니다. 그래도 삭제하시겠습니까?`)) return;
+        updateSponsorSites(sponsorSites.filter(s => s !== siteName));
       };
 
       const extractNumber = (str) => {
@@ -431,7 +485,7 @@
       const handleAddCampaign = () => {
         if (!newCampaign.title || !newCampaign.deadline) return alert('상호명(프로젝트명)과 마감일은 필수입니다!');
         updateCampaigns([...campaigns, { ...newCampaign, id: Date.now(), status: 'pending', expStatus: 'pending', paybackStatus: false }]);
-        setNewCampaign({ site: '레뷰', title: '', item: '', region: '', amount: '', visitDate: '', deadline: '', notes: '' });
+        setNewCampaign({ site: sponsorSites[0] || '', title: '', item: '', region: '', amount: '', visitDate: '', deadline: '', notes: '' });
       };
 
       const toggleCampaignStatus = (id) => updateCampaigns(campaigns.map(c => c.id === id ? { ...c, status: c.status === 'pending' ? 'completed' : 'pending' } : c));
@@ -822,12 +876,41 @@
             {/* 3. CAMPAIGNS TAB */}
             {activeTab === 'campaigns' && (
               <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 h-full flex flex-col">
-                <div className="mb-6"><h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2"><i className="fa-regular fa-calendar text-2xl text-[#03C75A]"></i> 협찬 & 일정 관리</h2></div>
+                <div className="mb-6 flex justify-between items-center">
+                  <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2"><i className="fa-regular fa-calendar text-2xl text-[#03C75A]"></i> 협찬 & 일정 관리</h2>
+                  <button onClick={() => setShowSiteManager(!showSiteManager)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${showSiteManager ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'}`}>
+                    <i className="fa-solid fa-gear"></i> 플랫폼 관리
+                  </button>
+                </div>
+
+                {/* 플랫폼 관리 패널 */}
+                {showSiteManager && (
+                  <div className="mb-6 bg-white rounded-2xl p-5 shadow-sm border border-gray-100 animate-in fade-in slide-in-from-top-2 duration-300">
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2"><i className="fa-solid fa-tags text-[#03C75A]"></i> 플랫폼 목록 관리</h3>
+                      <button onClick={() => setShowSiteManager(false)} className="text-gray-400 hover:text-gray-600"><i className="fa-solid fa-xmark"></i></button>
+                    </div>
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      {sponsorSites.map(site => (
+                        <div key={site} className="flex items-center gap-1.5 bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 group">
+                          <span className="text-sm font-medium text-gray-700">{site}</span>
+                          <button onClick={() => handleDeleteSite(site)} className="text-gray-300 hover:text-red-500 transition-colors ml-1"><i className="fa-solid fa-xmark text-xs"></i></button>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex gap-2">
+                      <input type="text" value={newSiteName} onChange={(e) => setNewSiteName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleAddSite()} placeholder="새 플랫폼 이름" className="flex-1 p-2.5 rounded-xl border border-gray-200 outline-none text-sm focus:border-[#03C75A]" />
+                      <button onClick={handleAddSite} disabled={!newSiteName.trim()} className="px-4 py-2.5 bg-gray-900 text-white font-semibold rounded-xl text-sm disabled:opacity-50 hover:bg-black flex items-center gap-1.5">
+                        <i className="fa-solid fa-plus text-xs"></i> 추가
+                      </button>
+                    </div>
+                  </div>
+                )}
                 <div className="flex flex-col gap-6 h-full">
                   <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex-shrink-0">
                     <h3 className="text-sm font-bold text-gray-800 mb-4 flex items-center gap-2"><i className="fa-solid fa-plus text-base text-[#03C75A]"></i> 상세 일정 등록</h3>
                     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 items-end">
-                      <div className="col-span-1"><label className="block text-[11px] font-bold text-gray-500 mb-1">플랫폼</label><select value={newCampaign.site} onChange={(e) => setNewCampaign({...newCampaign, site: e.target.value})} className="w-full p-2.5 rounded-xl border border-gray-200 outline-none text-sm bg-white">{SPONSOR_SITES.map(site => <option key={site} value={site}>{site}</option>)}</select></div>
+                      <div className="col-span-1"><label className="block text-[11px] font-bold text-gray-500 mb-1">플랫폼</label><select value={newCampaign.site} onChange={(e) => setNewCampaign({...newCampaign, site: e.target.value})} className="w-full p-2.5 rounded-xl border border-gray-200 outline-none text-sm bg-white">{sponsorSites.map(site => <option key={site} value={site}>{site}</option>)}</select></div>
                       <div className="col-span-1 md:col-span-2 lg:col-span-1"><label className="block text-[11px] font-bold text-gray-500 mb-1">상호명 (프로젝트명) *</label><input type="text" value={newCampaign.title} onChange={(e) => setNewCampaign({...newCampaign, title: e.target.value})} className="w-full p-2.5 rounded-xl border border-gray-200 outline-none text-sm" /></div>
                       <div className="col-span-1"><label className="block text-[11px] font-bold text-gray-500 mb-1">물품 (제공내역)</label><input type="text" value={newCampaign.item} onChange={(e) => setNewCampaign({...newCampaign, item: e.target.value})} className="w-full p-2.5 rounded-xl border border-gray-200 outline-none text-sm" /></div>
                       <div className="col-span-1"><label className="block text-[11px] font-bold text-gray-500 mb-1">지역</label><input type="text" value={newCampaign.region} onChange={(e) => setNewCampaign({...newCampaign, region: e.target.value})} className="w-full p-2.5 rounded-xl border border-gray-200 outline-none text-sm" /></div>
@@ -848,7 +931,7 @@
                       </div>
                       <div className="flex flex-col gap-2">
                         <div className="flex gap-2">{['전체', '진행중', '완료됨'].map(status => <button key={status} onClick={() => setStatusFilter(status)} className={`px-4 py-1.5 rounded-full text-xs font-medium border ${statusFilter === status ? 'bg-gray-700 text-white border-gray-700' : 'bg-white text-gray-600 border-gray-200'}`}>{status}</button>)}</div>
-                        <div className="flex gap-2 flex-wrap">{['전체', ...SPONSOR_SITES].map(site => <button key={site} onClick={() => setCampaignFilter(site)} className={`px-4 py-1.5 rounded-full text-xs font-medium border ${campaignFilter === site ? 'bg-[#03C75A] text-white border-[#03C75A]' : 'bg-white text-gray-600 border-gray-200'}`}>{site}</button>)}</div>
+                        <div className="flex gap-2 flex-wrap">{['전체', ...sponsorSites].map(site => <button key={site} onClick={() => setCampaignFilter(site)} className={`px-4 py-1.5 rounded-full text-xs font-medium border ${campaignFilter === site ? 'bg-[#03C75A] text-white border-[#03C75A]' : 'bg-white text-gray-600 border-gray-200'}`}>{site}</button>)}</div>
                       </div>
                     </div>
 
