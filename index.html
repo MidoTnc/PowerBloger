@@ -38,6 +38,8 @@
     /* 스크롤바 숨기기 스타일 */
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    /* 텍스트 줄 수 제한 */
+    .line-clamp-3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 
     /* 로딩 화면 */
     #splash-screen {
@@ -232,6 +234,12 @@
       const [activeCategory, setActiveCategory] = useState('맛집');
       const [learningInput, setLearningInput] = useState('');
       const [isLearning, setIsLearning] = useState(false);
+      const [editingPostIndex, setEditingPostIndex] = useState(null); // null=추가모드, 숫자=수정모드
+      const MAX_SAMPLES = 3;
+
+      const [samplePosts, setSamplePosts] = useState({
+        '일상': [], '숙소': [], '맛집': [], '식물': [], '뷰티': [],
+      });
 
       const [genInputs, setGenInputs] = useState({ 
         title: '', pros: '', cons: '', keywords: '', wordCount: '', photoCount: '', tone: '', avoidKeywords: ''
@@ -292,7 +300,12 @@
           if (docSnap.exists) setAdRevenue(docSnap.data().data);
         }, handleError);
 
-        return () => { unsubStyles(); unsubCampaigns(); unsubRevenue(); };
+        const samplesRef = db.doc(`artifacts/${appId}/users/${user.uid}/appData/samplePosts`);
+        const unsubSamples = samplesRef.onSnapshot((docSnap) => {
+          if (docSnap.exists) setSamplePosts(prev => ({...prev, ...docSnap.data().data}));
+        }, handleError);
+
+        return () => { unsubStyles(); unsubCampaigns(); unsubRevenue(); unsubSamples(); };
       }, [user]);
 
       const updateLearnedStyles = async (newStyles) => {
@@ -335,6 +348,66 @@
           }
           setIsSyncing(false);
         }
+      };
+
+      const updateSamplePosts = async (newSamples) => {
+        setSamplePosts(newSamples);
+        if (user) {
+          setIsSyncing(true);
+          try {
+            await db.doc(`artifacts/${appId}/users/${user.uid}/appData/samplePosts`).set({ data: newSamples });
+            setDbError(false);
+          } catch (e) {
+            if (e.code === 'permission-denied') setDbError(true);
+          }
+          setIsSyncing(false);
+        }
+      };
+
+      // 예시 글 추가
+      const handleAddSample = () => {
+        if (!learningInput.trim()) return alert("블로그 글을 입력해주세요!");
+        const current = samplePosts[activeCategory] || [];
+        if (current.length >= MAX_SAMPLES) return alert(`카테고리당 최대 ${MAX_SAMPLES}개까지 저장할 수 있습니다.`);
+        const updated = { ...samplePosts, [activeCategory]: [...current, learningInput.trim()] };
+        updateSamplePosts(updated);
+        setLearningInput('');
+        alert('예시 글이 저장되었습니다!');
+      };
+
+      // 예시 글 수정 저장
+      const handleUpdateSample = () => {
+        if (!learningInput.trim()) return alert("블로그 글을 입력해주세요!");
+        const current = [...(samplePosts[activeCategory] || [])];
+        current[editingPostIndex] = learningInput.trim();
+        const updated = { ...samplePosts, [activeCategory]: current };
+        updateSamplePosts(updated);
+        setLearningInput('');
+        setEditingPostIndex(null);
+        alert('예시 글이 수정되었습니다!');
+      };
+
+      // 예시 글 삭제
+      const handleDeleteSample = (index) => {
+        if (!confirm(`${index + 1}번 예시 글을 삭제하시겠습니까?`)) return;
+        const current = [...(samplePosts[activeCategory] || [])];
+        current.splice(index, 1);
+        const updated = { ...samplePosts, [activeCategory]: current };
+        updateSamplePosts(updated);
+        // 학습 결과도 초기화 (원문이 바뀌었으니)
+        updateLearnedStyles({ ...learnedStyles, [activeCategory]: '예시 글이 변경되었습니다. 다시 학습을 실행해주세요.' });
+      };
+
+      // 수정 모드 진입
+      const handleEditSample = (index) => {
+        setEditingPostIndex(index);
+        setLearningInput(samplePosts[activeCategory][index]);
+      };
+
+      // 수정 취소
+      const handleCancelEdit = () => {
+        setEditingPostIndex(null);
+        setLearningInput('');
       };
 
       const extractNumber = (str) => {
@@ -410,11 +483,12 @@
       const sortedSponsorSites = Object.entries(sponsorSiteStats).filter(([_, data]) => data.count > 0).sort((a, b) => b[1].totalAmount - a[1].totalAmount);
 
       const handleLearnStyle = async () => {
-        if (!learningInput.trim()) return alert("학습할 블로그 글을 입력해주세요!");
+        const posts = samplePosts[activeCategory] || [];
+        if (posts.length === 0) return alert("먼저 예시 글을 1개 이상 저장해주세요!");
         setIsLearning(true);
         try {
-          const currentStyle = learnedStyles[activeCategory];
-          let prompt = `다음은 내 블로그의 [${activeCategory}] 카테고리 포스팅 예시입니다.\n\n`;
+          let prompt = `다음은 내 블로그의 [${activeCategory}] 카테고리 포스팅 예시 ${posts.length}개입니다.\n`;
+          prompt += `모든 예시를 종합적으로 분석하여 이 블로거의 일관된 스타일을 파악해줘.\n\n`;
           prompt += `아래 항목들을 모두 정밀하게 분석해줘:\n\n`;
           prompt += `1. **문체 분석**: 존댓말/반말 비율, 어미 패턴(~요, ~임, ~ㅋㅋ, ~습니당 등), 문장 길이 경향\n`;
           prompt += `2. **자주 쓰는 표현/단어**: 블로거가 즐겨 쓰는 특유의 표현이나 감탄사를 원문 그대로 5개 이상 추출\n`;
@@ -424,18 +498,15 @@
           prompt += `6. **강조 방식**: 볼드/밑줄/큰따옴표 등의 사용 빈도와 용도\n`;
           prompt += `7. **톤 & 분위기**: 전체적인 감성(솔직한/꾸밈없는/정보전달/감성적 등)\n`;
           prompt += `8. **금기사항**: 이 블로거가 절대 안 쓸 것 같은 표현이나 스타일\n\n`;
-          
-          if (currentStyle && !currentStyle.includes('아직 학습된')) {
-            prompt += `[기존 분석 결과]:\n${currentStyle}\n\n위 기존 결과를 참고하되, 새 예시를 반영하여 더 정교하게 업데이트해줘.\n\n`;
-          }
-          
           prompt += `위 8개 항목을 반드시 모두 포함하여 마크다운 형식으로 정리해줘. 가능한 한 원문의 실제 표현을 인용해서 구체적으로 작성해.\n\n`;
-          prompt += `[예시 글]:\n${learningInput}`;
+          
+          posts.forEach((post, i) => {
+            prompt += `[예시 글 ${i + 1}]:\n${post}\n\n`;
+          });
 
-          const newStyle = await callGemini(prompt, "너는 블로그 글쓰기 스타일 분석 전문가야. 추상적인 요약이 아니라, AI가 이 사람의 글을 완벽히 흉내 낼 수 있을 정도로 구체적이고 실용적인 분석을 해야 해. 반드시 원문의 실제 문장과 표현을 인용하면서 분석해.");
+          const newStyle = await callGemini(prompt, "너는 블로그 글쓰기 스타일 분석 전문가야. 추상적인 요약이 아니라, AI가 이 사람의 글을 완벽히 흉내 낼 수 있을 정도로 구체적이고 실용적인 분석을 해야 해. 여러 예시에서 공통적으로 나타나는 패턴을 중심으로 분석하되, 반드시 원문의 실제 문장과 표현을 인용하면서 분석해.");
           updateLearnedStyles({ ...learnedStyles, [activeCategory]: newStyle });
-          setLearningInput('');
-          alert(`${activeCategory} 카테고리 학습이 완료되었습니다! 클라우드에 자동 저장됩니다.`);
+          alert(`${activeCategory} 카테고리 학습이 완료되었습니다! (예시 ${posts.length}개 기반)`);
         } catch (error) {
           alert(error.message);
         } finally {
@@ -456,7 +527,7 @@
           if (genInputs.photoCount) prompt += `사진 배치: ${genInputs.photoCount} (조건에 맞춰 본문 중간에 "[사진 들어갈 곳]" 적절히 분배해)\n`;
           prompt += `\n위 내용을 바탕으로 네이버 블로그 포스팅 초안을 작성해줘. 제목도 추천해줘.\n서로 다른 도입부, 분위기, 전개 방식을 가진 **3가지 다른 버전**의 블로그 초안을 작성해줘.\n\n중요: 각 버전을 반드시 아래 형식으로 구분해줘:\n[버전1]\n(첫 번째 초안)\n[버전2]\n(두 번째 초안)\n[버전3]\n(세 번째 초안)\n\n절대 지켜야 할 규칙: 본문에 마크다운 문법(**, *, #, ##, ### 등)을 절대 사용하지 마. 키워드 강조도 **없이** 그냥 일반 텍스트로만 써. 네이버 블로그에 바로 붙여넣을 수 있는 순수 텍스트여야 해.`;
 
-          const systemInstruction = styleGuide && !styleGuide.includes('아직 학습된') 
+          const systemInstruction = styleGuide && !styleGuide.includes('아직 학습된') && !styleGuide.includes('다시 학습을') 
             ? `너는 내 블로그 전담 에디터야. 아래 [스타일 분석 결과]에 나온 문체, 어미, 표현, 이모티콘, 글 구조를 100% 그대로 따라해야 해.\n특히:\n- 분석에 나온 "자주 쓰는 표현"은 반드시 자연스럽게 섞어 써\n- 어미 패턴(~요, ~임, ~ㅋㅋ 등)을 정확히 맞춰\n- 문단 길이와 줄바꿈 패턴도 동일하게\n- "금기사항"에 나온 표현은 절대 쓰지 마\n- AI가 쓴 티가 나면 안 돼. 진짜 이 블로거가 직접 쓴 것처럼 자연스러워야 해\n\n반드시 [버전1] [버전2] [버전3] 태그로 각 버전을 명확히 구분해서 작성해.\n\n[스타일 분석 결과]\n${styleGuide}`
             : `너는 네이버 블로그 전문 에디터야. 자연스럽고 사람 냄새 나는 블로그 글을 작성해야 해. AI가 쓴 티가 나면 안 돼.\n반드시 [버전1] [버전2] [버전3] 태그로 각 버전을 명확히 구분해서 작성해.`;
           const result = await callGemini(prompt, systemInstruction);
@@ -584,7 +655,7 @@
                 <h2 className="text-xs md:text-sm font-bold text-gray-500 mb-2 md:mb-3 uppercase tracking-wider">카테고리 선택</h2>
                 <div className="flex gap-2 flex-wrap">
                   {CATEGORIES.map(cat => (
-                    <button key={cat} onClick={() => setActiveCategory(cat)} className={`px-4 py-1.5 md:px-5 md:py-2 rounded-full text-sm md:text-base font-medium transition-all duration-200 border ${activeCategory === cat ? 'bg-[#03C75A] text-white border-[#03C75A] shadow-md' : 'bg-white text-gray-600 border-gray-200 hover:border-[#03C75A]/50 hover:bg-gray-50'}`}>
+                    <button key={cat} onClick={() => { setActiveCategory(cat); setEditingPostIndex(null); setLearningInput(''); }} className={`px-4 py-1.5 md:px-5 md:py-2 rounded-full text-sm md:text-base font-medium transition-all duration-200 border ${activeCategory === cat ? 'bg-[#03C75A] text-white border-[#03C75A] shadow-md' : 'bg-white text-gray-600 border-gray-200 hover:border-[#03C75A]/50 hover:bg-gray-50'}`}>
                       {cat}
                     </button>
                   ))}
@@ -597,18 +668,91 @@
               <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div className="mb-6">
                   <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2"><i className="fa-solid fa-book-open text-2xl text-[#03C75A]"></i> 내 블로그 스타일 학습하기</h2>
+                  <p className="text-sm text-gray-500 mt-1">카테고리별로 예시 글을 최대 {MAX_SAMPLES}개 저장하고, 한 번에 학습시킬 수 있습니다.</p>
                 </div>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">기존 '{activeCategory}' 블로그 글 붙여넣기</label>
-                    <textarea value={learningInput} onChange={(e) => setLearningInput(e.target.value)} placeholder="본문 내용을 복사해서 붙여넣으세요." className="w-full h-64 p-4 rounded-xl border border-gray-200 focus:border-[#03C75A] focus:ring-2 focus:ring-[#03C75A]/20 resize-none outline-none transition-all text-sm" />
-                    <button onClick={handleLearnStyle} disabled={isLearning} className="w-full mt-4 bg-[#03C75A] hover:bg-[#02b350] text-white font-semibold py-3 rounded-xl transition-colors flex justify-center items-center gap-2 disabled:opacity-70">
-                      {isLearning ? <><i className="fa-solid fa-spinner fa-spin text-lg"></i> 학습 중...</> : <><i className="fa-solid fa-rotate text-lg"></i> 알고리즘 업데이트</>}
+
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                  {/* 왼쪽: 예시 글 관리 */}
+                  <div className="lg:col-span-5 flex flex-col gap-4">
+                    {/* 저장된 예시 글 목록 */}
+                    <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+                      <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2">
+                          <i className="fa-solid fa-list text-[#03C75A]"></i> 저장된 '{activeCategory}' 예시 글
+                        </h3>
+                        <span className="text-xs font-bold text-gray-400">{(samplePosts[activeCategory] || []).length} / {MAX_SAMPLES}</span>
+                      </div>
+
+                      {(samplePosts[activeCategory] || []).length === 0 ? (
+                        <div className="text-center py-8 text-gray-400">
+                          <i className="fa-solid fa-file-circle-plus text-3xl mb-2 opacity-30"></i>
+                          <p className="text-sm">아직 저장된 예시 글이 없습니다.</p>
+                          <p className="text-xs mt-1">아래에서 블로그 글을 붙여넣고 저장해주세요.</p>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col gap-2">
+                          {(samplePosts[activeCategory] || []).map((post, idx) => (
+                            <div key={idx} className={`p-3 rounded-xl border ${editingPostIndex === idx ? 'border-[#03C75A] bg-green-50' : 'border-gray-100 bg-gray-50'} group`}>
+                              <div className="flex justify-between items-start gap-2">
+                                <div className="flex-1 min-w-0">
+                                  <span className="text-[10px] font-bold text-gray-400">예시 {idx + 1}</span>
+                                  <p className="text-xs text-gray-600 mt-1 line-clamp-3 leading-relaxed">{post.substring(0, 150)}{post.length > 150 ? '...' : ''}</p>
+                                </div>
+                                <div className="flex gap-1 flex-shrink-0">
+                                  <button onClick={() => handleEditSample(idx)} className="p-1.5 text-gray-400 hover:text-[#03C75A] hover:bg-white rounded-lg transition-colors" title="수정">
+                                    <i className="fa-solid fa-pen-to-square text-xs"></i>
+                                  </button>
+                                  <button onClick={() => handleDeleteSample(idx)} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-white rounded-lg transition-colors" title="삭제">
+                                    <i className="fa-solid fa-trash-can text-xs"></i>
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* 예시 글 입력/수정 */}
+                    <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+                      <div className="flex justify-between items-center mb-2">
+                        <label className="block text-sm font-semibold text-gray-700">
+                          {editingPostIndex !== null ? `예시 ${editingPostIndex + 1} 수정 중` : '새 예시 글 추가'}
+                        </label>
+                        {editingPostIndex !== null && (
+                          <button onClick={handleCancelEdit} className="text-xs text-gray-500 hover:text-red-500 font-semibold">취소</button>
+                        )}
+                      </div>
+                      <textarea value={learningInput} onChange={(e) => setLearningInput(e.target.value)} placeholder="블로그 본문을 복사해서 붙여넣으세요." className="w-full h-40 p-4 rounded-xl border border-gray-200 focus:border-[#03C75A] focus:ring-2 focus:ring-[#03C75A]/20 resize-none outline-none transition-all text-sm" />
+                      <button 
+                        onClick={editingPostIndex !== null ? handleUpdateSample : handleAddSample} 
+                        disabled={(samplePosts[activeCategory] || []).length >= MAX_SAMPLES && editingPostIndex === null}
+                        className="w-full mt-3 bg-gray-900 hover:bg-black text-white font-semibold py-2.5 rounded-xl transition-colors flex justify-center items-center gap-2 text-sm disabled:opacity-50">
+                        {editingPostIndex !== null 
+                          ? <><i className="fa-solid fa-check"></i> 수정 완료</> 
+                          : <><i className="fa-solid fa-plus"></i> 예시 글 저장 ({(samplePosts[activeCategory] || []).length}/{MAX_SAMPLES})</>}
+                      </button>
+                    </div>
+
+                    {/* 학습 실행 버튼 */}
+                    <button onClick={handleLearnStyle} disabled={isLearning || (samplePosts[activeCategory] || []).length === 0} className="w-full bg-[#03C75A] hover:bg-[#02b350] text-white font-semibold py-3.5 rounded-xl transition-colors flex justify-center items-center gap-2 disabled:opacity-50 shadow-sm">
+                      {isLearning 
+                        ? <><i className="fa-solid fa-spinner fa-spin text-lg"></i> {(samplePosts[activeCategory] || []).length}개 예시로 학습 중...</> 
+                        : <><i className="fa-solid fa-rotate text-lg"></i> 전체 예시로 학습 시작 ({(samplePosts[activeCategory] || []).length}개)</>}
                     </button>
                   </div>
-                  <div className="bg-gray-50 rounded-2xl p-6 border border-gray-200 flex flex-col">
-                    <h3 className="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2"><i className="fa-solid fa-circle-check text-lg text-[#03C75A]"></i> 현재 '{activeCategory}' 규칙</h3>
-                    <div className="prose prose-sm max-w-none text-gray-600 bg-white p-5 rounded-xl border border-gray-100 flex-1 overflow-y-auto whitespace-pre-wrap">{learnedStyles[activeCategory]}</div>
+
+                  {/* 오른쪽: 학습 결과 */}
+                  <div className="lg:col-span-7">
+                    <div className="bg-gray-50 rounded-2xl p-6 border border-gray-200 flex flex-col h-full">
+                      <h3 className="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
+                        {learnedStyles[activeCategory]?.includes('아직 학습된') || learnedStyles[activeCategory]?.includes('다시 학습을')
+                          ? <><i className="fa-solid fa-circle-exclamation text-lg text-gray-400"></i> '{activeCategory}' 학습 결과</>
+                          : <><i className="fa-solid fa-circle-check text-lg text-[#03C75A]"></i> '{activeCategory}' 학습 결과 (학습됨)</>
+                        }
+                      </h3>
+                      <div className="prose prose-sm max-w-none text-gray-600 bg-white p-5 rounded-xl border border-gray-100 flex-1 overflow-y-auto whitespace-pre-wrap min-h-[400px]">{learnedStyles[activeCategory]}</div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -620,9 +764,9 @@
                 <div className="mb-6">
                   <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2"><i className="fa-solid fa-pen-nib text-2xl text-[#03C75A]"></i> 리뷰 자동 생성</h2>
                   <div className="mt-2">
-                    {learnedStyles[activeCategory]?.includes('아직 학습된') 
-                      ? <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-red-500 bg-red-50 px-3 py-1.5 rounded-lg border border-red-100"><i className="fa-solid fa-circle-exclamation"></i> '{activeCategory}' 스타일 미학습 — 알고리즘 학습 메뉴에서 먼저 학습시켜주세요</span>
-                      : <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#03C75A] bg-green-50 px-3 py-1.5 rounded-lg border border-green-100"><i className="fa-solid fa-circle-check"></i> '{activeCategory}' 스타일 학습됨 — 내 문체로 생성됩니다</span>
+                    {learnedStyles[activeCategory]?.includes('아직 학습된') || learnedStyles[activeCategory]?.includes('다시 학습을')
+                      ? <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-red-500 bg-red-50 px-3 py-1.5 rounded-lg border border-red-100"><i className="fa-solid fa-circle-exclamation"></i> '{activeCategory}' 스타일 미학습 — 알고리즘 학습 메뉴에서 예시 글을 넣고 학습시켜주세요</span>
+                      : <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#03C75A] bg-green-50 px-3 py-1.5 rounded-lg border border-green-100"><i className="fa-solid fa-circle-check"></i> '{activeCategory}' 스타일 학습됨 (예시 {(samplePosts[activeCategory] || []).length}개 기반)</span>
                     }
                   </div>
                 </div>
