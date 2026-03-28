@@ -162,8 +162,8 @@
     const appId = 'powerbloger-app';
 
     // --- 제미나이 API 호출 함수 ---
-    const callGemini = async (prompt, systemInstruction = "") => {
-      const apiKey = "AIzaSyDav8mrjMLDnGtx1IGibGRrO3DJsTPhOcE"; 
+    const callGemini = async (prompt, systemInstruction = "", apiKey = "") => {
+      if (!apiKey) throw new Error("API 키가 설정되지 않았습니다.\n\n→ 설정 메뉴에서 Gemini API 키를 입력해주세요.");
       const model = "gemini-2.5-flash-lite";
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
       
@@ -277,6 +277,8 @@
       // 설정
       const [blogName, setBlogName] = useState('PowerBloger');
       const [editingBlogName, setEditingBlogName] = useState('');
+      const [geminiApiKey, setGeminiApiKey] = useState(() => localStorage.getItem('pb-gemini-key') || '');
+      const [editingApiKey, setEditingApiKey] = useState('');
 
       // 해시태그
       const [hashtags, setHashtags] = useState('');
@@ -504,6 +506,13 @@
         updateSponsorSites(sponsorSites.filter(s => s !== siteName));
       };
 
+      // API 키 저장 (localStorage만 사용, 소스코드에 키 없음)
+      const saveApiKey = (key) => {
+        const trimmed = key.trim();
+        setGeminiApiKey(trimmed);
+        localStorage.setItem('pb-gemini-key', trimmed);
+      };
+
       // 블로그명 저장
       const saveBlogName = async (name) => {
         const trimmed = name.trim() || 'PowerBloger';
@@ -614,7 +623,7 @@
             prompt += `[예시 글 ${i + 1}]:\n${post}\n\n`;
           });
 
-          const newStyle = await callGemini(prompt, "너는 블로그 글쓰기 스타일 분석 전문가야. 추상적인 요약이 아니라, AI가 이 사람의 글을 완벽히 흉내 낼 수 있을 정도로 구체적이고 실용적인 분석을 해야 해. 여러 예시에서 공통적으로 나타나는 패턴을 중심으로 분석하되, 반드시 원문의 실제 문장과 표현을 인용하면서 분석해.");
+          const newStyle = await callGemini(prompt, "너는 블로그 글쓰기 스타일 분석 전문가야. 추상적인 요약이 아니라, AI가 이 사람의 글을 완벽히 흉내 낼 수 있을 정도로 구체적이고 실용적인 분석을 해야 해. 여러 예시에서 공통적으로 나타나는 패턴을 중심으로 분석하되, 반드시 원문의 실제 문장과 표현을 인용하면서 분석해.", geminiApiKey);
           updateLearnedStyles({ ...learnedStyles, [activeCategory]: newStyle });
           alert(`${activeCategory} 카테고리 학습이 완료되었습니다! (예시 ${posts.length}개 기반)`);
         } catch (error) {
@@ -640,7 +649,7 @@
           const systemInstruction = styleGuide && !styleGuide.includes('아직 학습된') && !styleGuide.includes('다시 학습을') 
             ? `너는 내 블로그 전담 에디터야. 아래 [스타일 분석 결과]에 나온 문체, 어미, 표현, 이모티콘, 글 구조를 100% 그대로 따라해야 해.\n특히:\n- 분석에 나온 "자주 쓰는 표현"은 반드시 자연스럽게 섞어 써\n- 어미 패턴(~요, ~임, ~ㅋㅋ 등)을 정확히 맞춰\n- 문단 길이와 줄바꿈 패턴도 동일하게\n- "금기사항"에 나온 표현은 절대 쓰지 마\n- AI가 쓴 티가 나면 안 돼. 진짜 이 블로거가 직접 쓴 것처럼 자연스러워야 해\n\n반드시 [버전1] [버전2] [버전3] 태그로 각 버전을 명확히 구분해서 작성해.\n\n[스타일 분석 결과]\n${styleGuide}`
             : `너는 네이버 블로그 전문 에디터야. 자연스럽고 사람 냄새 나는 블로그 글을 작성해야 해. AI가 쓴 티가 나면 안 돼.\n반드시 [버전1] [버전2] [버전3] 태그로 각 버전을 명확히 구분해서 작성해.`;
-          const result = await callGemini(prompt, systemInstruction);
+          const result = await callGemini(prompt, systemInstruction, geminiApiKey);
           
           // 스마트 파싱: [버전1], [버전2], [버전3] 태그로 분리
           let versions = [];
@@ -707,7 +716,7 @@
           if (genInputs.keywords) prompt += `필수 포함 키워드: ${genInputs.keywords}\n\n`;
           prompt += `[블로그 글]:\n${currentPost.substring(0, 2000)}`;
 
-          let result = await callGemini(prompt, "너는 네이버 블로그 SEO 전문가야. 해시태그만 출력해.");
+          let result = await callGemini(prompt, "너는 네이버 블로그 SEO 전문가야. 해시태그만 출력해.", geminiApiKey);
           result = result.replace(/\*\*/g, '').replace(/^#{1,6}\s+/gm, '').trim();
           setHashtags(result);
         } catch (error) {
@@ -825,6 +834,12 @@
 
           {/* Main Content */}
           <main className="flex-1 p-4 md:p-8 overflow-y-auto scroll-smooth relative">
+            {!geminiApiKey && (
+              <div className="mb-4 bg-yellow-50 border border-yellow-200 rounded-xl px-4 py-3 flex items-center gap-3 cursor-pointer" onClick={() => setActiveTab('settings')}>
+                <i className="fa-solid fa-key text-yellow-500"></i>
+                <p className="text-sm text-yellow-700 font-medium">API 키를 설정하면 AI 기능을 사용할 수 있어요. <span className="underline">설정으로 이동 →</span></p>
+              </div>
+            )}
             {(activeTab === 'learning' || activeTab === 'generation') && (
               <div className="mb-6 md:mb-8">
                 <h2 className="text-xs md:text-sm font-bold text-gray-500 mb-2 md:mb-3 uppercase tracking-wider">카테고리 선택</h2>
@@ -963,7 +978,7 @@
                         </div>
                         <div><label className="block text-xs font-semibold text-gray-500 mb-1">원하는 분위기/컨셉</label><input type="text" value={genInputs.tone} onChange={(e) => setGenInputs({...genInputs, tone: e.target.value})} className="w-full p-2.5 rounded-lg border border-gray-200 text-sm bg-gray-50" /></div>
                       </div>
-                      <button onClick={handleGeneratePost} disabled={isGenerating || !genInputs.title} className="w-full mt-6 bg-gray-900 hover:bg-black text-white font-semibold py-3.5 rounded-xl flex justify-center items-center gap-2 disabled:opacity-70">
+                      <button onClick={handleGeneratePost} disabled={isGenerating || !genInputs.title || !geminiApiKey} className="w-full mt-6 bg-gray-900 hover:bg-black text-white font-semibold py-3.5 rounded-xl flex justify-center items-center gap-2 disabled:opacity-70">
                         {isGenerating ? <><i className="fa-solid fa-spinner fa-spin text-lg"></i> 3개 뽑는 중...</> : <><i className="fa-solid fa-layer-group text-lg"></i> 3개 초안 뽑기</>}
                       </button>
                     </div>
@@ -986,7 +1001,7 @@
                         </div>
                         <div className="flex items-center gap-2">
                           {generatedPosts.length > 0 && (
-                            <button onClick={handleGenerateHashtags} disabled={isGeneratingTags} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium bg-white border text-gray-700 hover:border-[#03C75A] hover:text-[#03C75A] transition-all disabled:opacity-50">
+                            <button onClick={handleGenerateHashtags} disabled={isGeneratingTags || !geminiApiKey} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium bg-white border text-gray-700 hover:border-[#03C75A] hover:text-[#03C75A] transition-all disabled:opacity-50">
                               {isGeneratingTags ? <i className="fa-solid fa-spinner fa-spin"></i> : <i className="fa-solid fa-hashtag"></i>} 태그
                             </button>
                           )}
@@ -1247,6 +1262,36 @@
                 </div>
 
                 <div className="max-w-2xl flex flex-col gap-6">
+                  {/* API 키 설정 */}
+                  <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                    <h3 className="text-sm font-bold text-gray-800 mb-1 flex items-center gap-2"><i className="fa-solid fa-key text-[#03C75A]"></i> Gemini API 키</h3>
+                    <p className="text-xs text-gray-500 mb-4">Google AI Studio에서 발급받은 API 키를 입력하세요. 이 키는 이 기기에만 저장됩니다.</p>
+                    <div className="flex gap-2">
+                      <input 
+                        type="password" 
+                        value={editingApiKey || (geminiApiKey ? '••••••••••••' + geminiApiKey.slice(-4) : '')} 
+                        onChange={(e) => setEditingApiKey(e.target.value)} 
+                        onFocus={() => setEditingApiKey(geminiApiKey)}
+                        placeholder="AIzaSy..." 
+                        className="flex-1 p-3 rounded-xl border border-gray-200 outline-none text-sm font-mono focus:border-[#03C75A]" 
+                      />
+                      <button 
+                        onClick={() => { saveApiKey(editingApiKey); setEditingApiKey(''); alert('API 키가 저장되었습니다!'); }} 
+                        disabled={!editingApiKey || editingApiKey === geminiApiKey}
+                        className="px-5 py-3 bg-[#03C75A] text-white font-semibold rounded-xl text-sm disabled:opacity-50 hover:bg-[#02b350] whitespace-nowrap">
+                        저장
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-2 mt-2">
+                      {geminiApiKey ? (
+                        <span className="text-xs text-[#03C75A] font-semibold flex items-center gap-1"><i className="fa-solid fa-circle-check"></i> 키 등록됨</span>
+                      ) : (
+                        <span className="text-xs text-red-500 font-semibold flex items-center gap-1"><i className="fa-solid fa-circle-exclamation"></i> 미등록 — AI 기능 사용 불가</span>
+                      )}
+                      <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" className="text-xs text-gray-400 hover:text-[#03C75A] underline ml-auto">키 발급받기 →</a>
+                    </div>
+                  </div>
+
                   {/* 블로그명 설정 */}
                   <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
                     <h3 className="text-sm font-bold text-gray-800 mb-1 flex items-center gap-2"><i className="fa-solid fa-pen text-[#03C75A]"></i> 블로그명</h3>
