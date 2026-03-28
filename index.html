@@ -16,8 +16,21 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="application-name" content="PowerBloger">
 
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        fontFamily: {
+          sans: ['"Pretendard Variable"', 'Pretendard', '-apple-system', 'BlinkMacSystemFont', 'system-ui', 'Roboto', '"Helvetica Neue"', '"Segoe UI"', '"Apple SD Gothic Neo"', '"Noto Sans KR"', '"Malgun Gothic"', '"Apple Color Emoji"', '"Segoe UI Emoji"', '"Segoe UI Symbol"', 'sans-serif'],
+        },
+      },
+    }
+  </script>
+
   
   <!-- FontAwesome (아이콘) -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -35,6 +48,12 @@
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 
   <style>
+
+    /* 글로벌 타이포그래피 */
+    * { font-family: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif; }
+    h1, h2, h3, h4 { letter-spacing: -0.02em; }
+    body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+
     /* 스크롤바 숨기기 스타일 */
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
@@ -67,13 +86,14 @@
       font-size: 24px;
       font-weight: 800;
       color: #1a1a1a;
-      letter-spacing: -0.5px;
+      letter-spacing: -0.03em;
     }
     #splash-screen p {
       margin-top: 8px;
       font-size: 13px;
       color: #888;
       font-weight: 500;
+      letter-spacing: -0.01em;
     }
     #splash-dots span {
       display: inline-block;
@@ -803,7 +823,7 @@
               <button onClick={() => setShowNotifications(!showNotifications)} className="relative p-2.5 bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-all">
                 <i className="fa-solid fa-bell text-lg text-gray-600"></i>
                 {urgentCampaigns.length > 0 && (
-                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center animate-pulse">{urgentCampaigns.length}</span>
+                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[0.625rem] font-bold rounded-full flex items-center justify-center animate-pulse">{urgentCampaigns.length}</span>
                 )}
               </button>
 
@@ -827,10 +847,10 @@
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-semibold text-gray-800 truncate">{c.title}</p>
-                            <p className="text-[11px] text-gray-500 mt-0.5">{c.site} · 마감 {c.deadline}</p>
-                            {c.daysLeft < 0 && <p className="text-[11px] text-red-500 font-bold mt-0.5">마감 지남! ({Math.abs(c.daysLeft)}일 초과)</p>}
-                            {c.daysLeft === 0 && <p className="text-[11px] text-red-500 font-bold mt-0.5">오늘 마감!</p>}
-                            {c.daysLeft === 1 && <p className="text-[11px] text-yellow-600 font-bold mt-0.5">내일 마감!</p>}
+                            <p className="text-xs text-gray-500 mt-0.5">{c.site} · 마감 {c.deadline}</p>
+                            {c.daysLeft < 0 && <p className="text-xs text-red-500 font-bold mt-0.5">마감 지남! ({Math.abs(c.daysLeft)}일 초과)</p>}
+                            {c.daysLeft === 0 && <p className="text-xs text-red-500 font-bold mt-0.5">오늘 마감!</p>}
+                            {c.daysLeft === 1 && <p className="text-xs text-yellow-600 font-bold mt-0.5">내일 마감!</p>}
                           </div>
                         </div>
                       ))
@@ -885,7 +905,7 @@
                             <div key={idx} className={`p-3 rounded-xl border ${editingPostIndex === idx ? 'border-[#03C75A] bg-green-50' : 'border-gray-100 bg-gray-50'} group`}>
                               <div className="flex justify-between items-start gap-2">
                                 <div className="flex-1 min-w-0">
-                                  <span className="text-[10px] font-bold text-gray-400">예시 {idx + 1}</span>
+                                  <span className="text-[0.625rem] font-bold text-gray-400">예시 {idx + 1}</span>
                                   <p className="text-xs text-gray-600 mt-1 line-clamp-3 leading-relaxed">{post.substring(0, 150)}{post.length > 150 ? '...' : ''}</p>
                                 </div>
                                 <div className="flex gap-1 flex-shrink-0">
@@ -1073,14 +1093,14 @@
                   <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex-shrink-0">
                     <h3 className="text-sm font-bold text-gray-800 mb-4 flex items-center gap-2"><i className="fa-solid fa-plus text-base text-[#03C75A]"></i> 상세 일정 등록</h3>
                     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 items-end">
-                      <div className="col-span-1"><label className="block text-[11px] font-bold text-gray-500 mb-1">플랫폼</label><select value={newCampaign.site} onChange={(e) => setNewCampaign({...newCampaign, site: e.target.value})} className="w-full p-2.5 rounded-xl border border-gray-200 outline-none text-sm bg-white">{sponsorSites.map(site => <option key={site} value={site}>{site}</option>)}</select></div>
-                      <div className="col-span-1 md:col-span-2 lg:col-span-1"><label className="block text-[11px] font-bold text-gray-500 mb-1">상호명 (프로젝트명) *</label><input type="text" value={newCampaign.title} onChange={(e) => setNewCampaign({...newCampaign, title: e.target.value})} className="w-full p-2.5 rounded-xl border border-gray-200 outline-none text-sm" /></div>
-                      <div className="col-span-1"><label className="block text-[11px] font-bold text-gray-500 mb-1">물품 (제공내역)</label><input type="text" value={newCampaign.item} onChange={(e) => setNewCampaign({...newCampaign, item: e.target.value})} className="w-full p-2.5 rounded-xl border border-gray-200 outline-none text-sm" /></div>
-                      <div className="col-span-1"><label className="block text-[11px] font-bold text-gray-500 mb-1">지역</label><input type="text" value={newCampaign.region} onChange={(e) => setNewCampaign({...newCampaign, region: e.target.value})} className="w-full p-2.5 rounded-xl border border-gray-200 outline-none text-sm" /></div>
-                      <div className="col-span-1"><label className="block text-[11px] font-bold text-gray-500 mb-1">금액</label><input type="text" value={newCampaign.amount} onChange={(e) => setNewCampaign({...newCampaign, amount: e.target.value})} className="w-full p-2.5 rounded-xl border border-gray-200 outline-none text-sm" /></div>
-                      <div className="col-span-1"><label className="block text-[11px] font-bold text-gray-500 mb-1">예약날짜</label><input type="date" value={newCampaign.visitDate} onChange={(e) => setNewCampaign({...newCampaign, visitDate: e.target.value})} className="w-full p-2.5 rounded-xl border border-gray-200 outline-none text-sm" /></div>
-                      <div className="col-span-1"><label className="block text-[11px] font-bold text-gray-500 mb-1">포스팅 기한 *</label><input type="date" value={newCampaign.deadline} onChange={(e) => setNewCampaign({...newCampaign, deadline: e.target.value})} className="w-full p-2.5 rounded-xl border border-gray-200 outline-none text-sm" /></div>
-                      <div className="col-span-1 md:col-span-2 lg:col-span-2"><label className="block text-[11px] font-bold text-gray-500 mb-1">비고</label><input type="text" value={newCampaign.notes} onChange={(e) => setNewCampaign({...newCampaign, notes: e.target.value})} className="w-full p-2.5 rounded-xl border border-gray-200 outline-none text-sm" /></div>
+                      <div className="col-span-1"><label className="block text-xs font-bold text-gray-500 mb-1">플랫폼</label><select value={newCampaign.site} onChange={(e) => setNewCampaign({...newCampaign, site: e.target.value})} className="w-full p-2.5 rounded-xl border border-gray-200 outline-none text-sm bg-white">{sponsorSites.map(site => <option key={site} value={site}>{site}</option>)}</select></div>
+                      <div className="col-span-1 md:col-span-2 lg:col-span-1"><label className="block text-xs font-bold text-gray-500 mb-1">상호명 (프로젝트명) *</label><input type="text" value={newCampaign.title} onChange={(e) => setNewCampaign({...newCampaign, title: e.target.value})} className="w-full p-2.5 rounded-xl border border-gray-200 outline-none text-sm" /></div>
+                      <div className="col-span-1"><label className="block text-xs font-bold text-gray-500 mb-1">물품 (제공내역)</label><input type="text" value={newCampaign.item} onChange={(e) => setNewCampaign({...newCampaign, item: e.target.value})} className="w-full p-2.5 rounded-xl border border-gray-200 outline-none text-sm" /></div>
+                      <div className="col-span-1"><label className="block text-xs font-bold text-gray-500 mb-1">지역</label><input type="text" value={newCampaign.region} onChange={(e) => setNewCampaign({...newCampaign, region: e.target.value})} className="w-full p-2.5 rounded-xl border border-gray-200 outline-none text-sm" /></div>
+                      <div className="col-span-1"><label className="block text-xs font-bold text-gray-500 mb-1">금액</label><input type="text" value={newCampaign.amount} onChange={(e) => setNewCampaign({...newCampaign, amount: e.target.value})} className="w-full p-2.5 rounded-xl border border-gray-200 outline-none text-sm" /></div>
+                      <div className="col-span-1"><label className="block text-xs font-bold text-gray-500 mb-1">예약날짜</label><input type="date" value={newCampaign.visitDate} onChange={(e) => setNewCampaign({...newCampaign, visitDate: e.target.value})} className="w-full p-2.5 rounded-xl border border-gray-200 outline-none text-sm" /></div>
+                      <div className="col-span-1"><label className="block text-xs font-bold text-gray-500 mb-1">포스팅 기한 *</label><input type="date" value={newCampaign.deadline} onChange={(e) => setNewCampaign({...newCampaign, deadline: e.target.value})} className="w-full p-2.5 rounded-xl border border-gray-200 outline-none text-sm" /></div>
+                      <div className="col-span-1 md:col-span-2 lg:col-span-2"><label className="block text-xs font-bold text-gray-500 mb-1">비고</label><input type="text" value={newCampaign.notes} onChange={(e) => setNewCampaign({...newCampaign, notes: e.target.value})} className="w-full p-2.5 rounded-xl border border-gray-200 outline-none text-sm" /></div>
                       <div className="col-span-2 md:col-span-4 lg:col-span-5 flex justify-end mt-2"><button onClick={handleAddCampaign} className="px-8 py-2.5 bg-gray-900 text-white font-semibold rounded-xl flex items-center gap-2 text-sm"><i className="fa-solid fa-plus"></i> 리스트에 추가</button></div>
                     </div>
                   </div>
@@ -1105,19 +1125,19 @@
                         }).map(campaign => (
                           <div key={campaign.id} className={`flex flex-col justify-between p-5 rounded-2xl border relative ${campaign.status === 'completed' ? 'bg-gray-50 border-gray-100 opacity-60' : 'bg-white border-gray-200'}`}>
                             <div className="absolute -top-3 right-4 flex gap-1.5 shadow-sm">
-                               <button onClick={() => toggleExpStatus(campaign.id)} className={`text-[10px] font-bold px-2.5 py-1 rounded-full border ${campaign.expStatus === 'completed' ? 'bg-green-50 text-[#03C75A] border-green-200' : campaign.expStatus === 'shipping' ? 'bg-gray-100 text-gray-600 border-gray-300' : 'bg-white text-gray-400 border-gray-200'}`}>
+                               <button onClick={() => toggleExpStatus(campaign.id)} className={`text-[0.625rem] font-bold px-2.5 py-1 rounded-full border ${campaign.expStatus === 'completed' ? 'bg-green-50 text-[#03C75A] border-green-200' : campaign.expStatus === 'shipping' ? 'bg-gray-100 text-gray-600 border-gray-300' : 'bg-white text-gray-400 border-gray-200'}`}>
                                   {campaign.expStatus === 'completed' ? '🎒 체험완료' : campaign.expStatus === 'shipping' ? '🚚 배송중' : '⏳ 체험전'}
                                 </button>
-                                <button onClick={() => togglePaybackStatus(campaign.id)} className={`text-[10px] font-bold px-2.5 py-1 rounded-full border ${campaign.paybackStatus ? 'bg-green-50 text-green-600 border-green-200' : 'bg-white text-gray-400 border-gray-200'}`}>
+                                <button onClick={() => togglePaybackStatus(campaign.id)} className={`text-[0.625rem] font-bold px-2.5 py-1 rounded-full border ${campaign.paybackStatus ? 'bg-green-50 text-green-600 border-green-200' : 'bg-white text-gray-400 border-gray-200'}`}>
                                     {campaign.paybackStatus ? '💸 페이백완료' : '💳 페이백대기'}
                                   </button>
                             </div>
                             <div>
                               <div className="flex justify-between items-start mb-2 pt-1">
                                 <div className="flex items-center gap-1.5 flex-wrap">
-                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${campaign.status === 'completed' ? 'bg-gray-200 text-gray-600' : 'bg-gray-800 text-white'}`}>{campaign.site}</span>
-                                  {campaign.region && <span className="text-[10px] font-semibold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">📍 {campaign.region}</span>}
-                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${calculateDDay(campaign.deadline).includes('+') ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-700'}`}>{campaign.status === 'completed' ? '종료' : calculateDDay(campaign.deadline)}</span>
+                                  <span className={`text-[0.625rem] font-bold px-2 py-0.5 rounded ${campaign.status === 'completed' ? 'bg-gray-200 text-gray-600' : 'bg-gray-800 text-white'}`}>{campaign.site}</span>
+                                  {campaign.region && <span className="text-[0.625rem] font-semibold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">📍 {campaign.region}</span>}
+                                  <span className={`text-[0.625rem] font-bold px-2 py-0.5 rounded ${calculateDDay(campaign.deadline).includes('+') ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-700'}`}>{campaign.status === 'completed' ? '종료' : calculateDDay(campaign.deadline)}</span>
                                 </div>
                                 <button onClick={() => toggleCampaignStatus(campaign.id)} className={`flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center ${campaign.status === 'completed' ? 'bg-[#03C75A] border-[#03C75A]' : 'border-gray-300'}`}>
                                   {campaign.status === 'completed' && <i className="fa-solid fa-check text-white text-xs"></i>}
@@ -1163,12 +1183,12 @@
                           <div className="flex justify-between items-start mb-4">
                             <div className="flex items-center gap-3">
                               <div className="w-10 h-10 rounded-full bg-green-50 flex justify-center items-center font-bold text-[#03C75A] text-sm border">{siteName.substring(0, 2)}</div>
-                              <div><h4 className="font-bold text-gray-900">{siteName}</h4><p className="text-[11px] text-gray-500">수익 점유율: {sitePercentage}%</p></div>
+                              <div><h4 className="font-bold text-gray-900">{siteName}</h4><p className="text-xs text-gray-500">수익 점유율: {sitePercentage}%</p></div>
                             </div>
-                            <div className="text-right"><p className="text-lg font-bold text-[#03C75A]">{data.totalAmount.toLocaleString()}원</p><p className="text-[11px] text-gray-500">평균 단가: {averageAmount.toLocaleString()}원</p></div>
+                            <div className="text-right"><p className="text-lg font-bold text-[#03C75A]">{data.totalAmount.toLocaleString()}원</p><p className="text-xs text-gray-500">평균 단가: {averageAmount.toLocaleString()}원</p></div>
                           </div>
                           <div className="mt-auto pt-4 border-t border-gray-50 grid grid-cols-2 gap-4">
-                            <div><div className="flex justify-between text-[11px] font-semibold text-gray-500 mb-1.5"><span>진행 현황</span><span>{completionRate}%</span></div><div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden"><div className="bg-[#03C75A] h-1.5 rounded-full" style={{ width: `${completionRate}%` }}></div></div></div>
+                            <div><div className="flex justify-between text-xs font-semibold text-gray-500 mb-1.5"><span>진행 현황</span><span>{completionRate}%</span></div><div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden"><div className="bg-[#03C75A] h-1.5 rounded-full" style={{ width: `${completionRate}%` }}></div></div></div>
                             <div className="flex justify-end items-center gap-2 text-xs"><span className="bg-gray-100 text-gray-600 px-2.5 py-1 rounded-md font-semibold border border-gray-200">대기 {data.count - data.completedCount}건</span></div>
                           </div>
                         </div>
@@ -1187,23 +1207,23 @@
                   <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl p-5 md:p-6 shadow-md text-white flex-shrink-0">
                     <h3 className="text-xs md:text-sm font-semibold text-gray-300 mb-3 md:mb-4 flex items-center gap-2"><i className="fa-solid fa-wand-magic-sparkles text-[#03C75A]"></i> 역대 누적 애드포스트 성과</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6 divide-y sm:divide-y-0 sm:divide-x divide-gray-700">
-                      <div className="pt-2 sm:pt-0"><p className="text-gray-400 text-[10px] md:text-xs mb-0.5 md:mb-1">총 누적 수익</p><p className="text-2xl md:text-3xl font-bold">{allTimeTotal.toLocaleString()}원</p></div>
-                      <div className="pt-3 sm:pt-0 sm:pl-4 md:pl-6"><p className="text-gray-400 text-[10px] md:text-xs mb-0.5 md:mb-1">전체 일 평균 수익</p><p className="text-lg md:text-xl font-semibold">{allTimeAvg.toLocaleString()}원</p></div>
-                      <div className="pt-3 sm:pt-0 sm:pl-4 md:pl-6"><p className="text-gray-400 text-[10px] md:text-xs mb-0.5 md:mb-1">역대 최고 매출 (1일)</p><p className="text-lg md:text-xl font-semibold">{allTimeMax.toLocaleString()}원</p></div>
+                      <div className="pt-2 sm:pt-0"><p className="text-gray-400 text-[0.625rem] md:text-xs mb-0.5 md:mb-1">총 누적 수익</p><p className="text-2xl md:text-3xl font-bold">{allTimeTotal.toLocaleString()}원</p></div>
+                      <div className="pt-3 sm:pt-0 sm:pl-4 md:pl-6"><p className="text-gray-400 text-[0.625rem] md:text-xs mb-0.5 md:mb-1">전체 일 평균 수익</p><p className="text-lg md:text-xl font-semibold">{allTimeAvg.toLocaleString()}원</p></div>
+                      <div className="pt-3 sm:pt-0 sm:pl-4 md:pl-6"><p className="text-gray-400 text-[0.625rem] md:text-xs mb-0.5 md:mb-1">역대 최고 매출 (1일)</p><p className="text-lg md:text-xl font-semibold">{allTimeMax.toLocaleString()}원</p></div>
                     </div>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4">
                     <div className="bg-white rounded-2xl p-4 md:p-5 shadow-sm border border-gray-100 flex items-center gap-3 md:gap-4">
                       <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-green-50 flex items-center justify-center flex-shrink-0"><i className="fa-solid fa-dollar-sign text-xl text-[#03C75A]"></i></div>
-                      <div><p className="text-[10px] md:text-xs font-semibold text-gray-500 mb-0.5 md:mb-1">{currentDate.getMonth() + 1}월 총 수익</p><p className="text-lg md:text-xl font-bold text-gray-900">{totalRevenue.toLocaleString()}원</p></div>
+                      <div><p className="text-[0.625rem] md:text-xs font-semibold text-gray-500 mb-0.5 md:mb-1">{currentDate.getMonth() + 1}월 총 수익</p><p className="text-lg md:text-xl font-bold text-gray-900">{totalRevenue.toLocaleString()}원</p></div>
                     </div>
                     <div className="bg-white rounded-2xl p-4 md:p-5 shadow-sm border border-gray-100 flex items-center gap-3 md:gap-4">
                       <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-green-50 flex items-center justify-center flex-shrink-0"><i className="fa-solid fa-arrow-trend-up text-xl text-[#03C75A]"></i></div>
-                      <div><p className="text-[10px] md:text-xs font-semibold text-gray-500 mb-0.5 md:mb-1">{currentDate.getMonth() + 1}월 일 평균</p><p className="text-lg md:text-xl font-bold text-gray-900">{avgRevenue.toLocaleString()}원</p></div>
+                      <div><p className="text-[0.625rem] md:text-xs font-semibold text-gray-500 mb-0.5 md:mb-1">{currentDate.getMonth() + 1}월 일 평균</p><p className="text-lg md:text-xl font-bold text-gray-900">{avgRevenue.toLocaleString()}원</p></div>
                     </div>
                     <div className="bg-white rounded-2xl p-4 md:p-5 shadow-sm border border-gray-100 flex items-center gap-3 md:gap-4">
                       <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0"><i className="fa-regular fa-clock text-xl text-gray-500"></i></div>
-                      <div><p className="text-[10px] md:text-xs font-semibold text-gray-500 mb-0.5 md:mb-1">{currentDate.getMonth() + 1}월 최고 매출</p><p className="text-lg md:text-xl font-bold text-gray-900">{maxRevenue.toLocaleString()}원</p></div>
+                      <div><p className="text-[0.625rem] md:text-xs font-semibold text-gray-500 mb-0.5 md:mb-1">{currentDate.getMonth() + 1}월 최고 매출</p><p className="text-lg md:text-xl font-bold text-gray-900">{maxRevenue.toLocaleString()}원</p></div>
                     </div>
                   </div>
                 </div>
@@ -1224,9 +1244,9 @@
                       const isToday = new Date().toDateString() === new Date(currentDate.getFullYear(), currentDate.getMonth(), day).toDateString();
                       return (
                         <div key={day} onClick={() => openRevenueModal(dateStr, amount)} className={`bg-white min-h-[60px] md:min-h-[90px] p-1 md:p-2 cursor-pointer hover:bg-gray-50 flex flex-col group ${isToday ? 'ring-2 ring-inset ring-[#03C75A]' : ''}`}>
-                          <span className={`text-[10px] md:text-sm font-medium mb-0.5 md:mb-1 ${isToday ? 'text-[#03C75A]' : 'text-gray-600'}`}>{day}</span>
-                          {amount && <div className="mt-auto bg-green-50 text-green-700 text-[9px] md:text-xs font-bold py-0.5 px-1 md:py-1 md:px-1.5 rounded text-right truncate">+{amount.toLocaleString()}원</div>}
-                          {!amount && <div className="mt-auto opacity-0 md:group-hover:opacity-100 text-[8px] md:text-[10px] text-gray-400 text-right hidden md:block">클릭</div>}
+                          <span className={`text-[0.625rem] md:text-sm font-medium mb-0.5 md:mb-1 ${isToday ? 'text-[#03C75A]' : 'text-gray-600'}`}>{day}</span>
+                          {amount && <div className="mt-auto bg-green-50 text-green-700 text-xs md:text-xs font-bold py-0.5 px-1 md:py-1 md:px-1.5 rounded text-right truncate">+{amount.toLocaleString()}원</div>}
+                          {!amount && <div className="mt-auto opacity-0 md:group-hover:opacity-100 text-[0.5rem] md:text-[0.625rem] text-gray-400 text-right hidden md:block">클릭</div>}
                         </div>
                       );
                     })}
@@ -1282,7 +1302,7 @@
                         저장
                       </button>
                     </div>
-                    <p className="text-[11px] text-gray-400 mt-2">현재: {blogName}</p>
+                    <p className="text-xs text-gray-400 mt-2">현재: {blogName}</p>
                   </div>
 
                   {/* 앱 정보 */}
