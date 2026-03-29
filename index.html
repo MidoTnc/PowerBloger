@@ -297,8 +297,9 @@
       const [campaigns, setCampaigns] = useState([]);
       
       const [newCampaign, setNewCampaign] = useState({ 
-        site: '레뷰', title: '', item: '', region: '', amount: '', visitDate: '', deadline: '', notes: '' 
+        site: '레뷰', title: '', item: '', region: '', amount: '', visitDate: '', deadline: '', notes: '', hasPayback: false 
       });
+      const [lastCampaign, setLastCampaign] = useState(null);
       
       const [campaignFilter, setCampaignFilter] = useState('전체'); 
       const [sortOption, setSortOption] = useState('마감순'); 
@@ -483,6 +484,13 @@
         return html.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/\s+/g, ' ').trim();
       };
 
+      // 금액 포맷 (1000 → 1,000원)
+      const formatAmount = (val) => {
+        const num = extractNumber(val);
+        if (num === 0) return val || '';
+        return num.toLocaleString() + '원';
+      };
+
       // 예시 글 삭제
       const handleDeleteSample = (index) => {
         if (!confirm(`${index + 1}번 예시 글을 삭제하시겠습니까?`)) return;
@@ -585,8 +593,10 @@
 
       const handleAddCampaign = () => {
         if (!newCampaign.title || !newCampaign.deadline) return alert('상호명(프로젝트명)과 마감일은 필수입니다!');
-        updateCampaigns([...campaigns, { ...newCampaign, id: Date.now(), status: 'pending', expStatus: 'pending', paybackStatus: false }]);
-        setNewCampaign({ site: sponsorSites[0] || '', title: '', item: '', region: '', amount: '', visitDate: '', deadline: '', notes: '' });
+        const campaign = { ...newCampaign, id: Date.now(), status: 'pending', expStatus: 'pending', paybackStatus: newCampaign.hasPayback ? false : null };
+        updateCampaigns([...campaigns, campaign]);
+        setLastCampaign({ site: newCampaign.site, item: newCampaign.item, region: newCampaign.region, amount: newCampaign.amount, notes: newCampaign.notes, hasPayback: newCampaign.hasPayback });
+        setNewCampaign({ site: newCampaign.site, title: '', item: '', region: '', amount: '', visitDate: '', deadline: '', notes: '', hasPayback: false });
       };
 
       const toggleCampaignStatus = (id) => updateCampaigns(campaigns.map(c => c.id === id ? { ...c, status: c.status === 'pending' ? 'completed' : 'pending' } : c));
@@ -1131,17 +1141,30 @@
                   </div>
                 )}
                 <div className="flex flex-col gap-6 h-full">
-                  <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex-shrink-0">
-                    <h3 className="text-sm font-bold text-gray-800 mb-4 flex items-center gap-2"><i className="fa-solid fa-plus text-base text-[#03C75A]"></i> 상세 일정 등록</h3>
+                  <div className="bg-white rounded-2xl p-4 md:p-5 shadow-sm border border-gray-100 flex-shrink-0">
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2"><i className="fa-solid fa-plus text-base text-[#03C75A]"></i> 상세 일정 등록</h3>
+                      {lastCampaign && (
+                        <button onClick={() => setNewCampaign({ ...newCampaign, site: lastCampaign.site, item: lastCampaign.item, region: lastCampaign.region, amount: lastCampaign.amount, notes: lastCampaign.notes, hasPayback: lastCampaign.hasPayback })} className="flex items-center gap-1 text-xs font-semibold text-gray-500 hover:text-[#03C75A] border border-gray-200 hover:border-[#03C75A] px-2.5 py-1 rounded-lg transition-all">
+                          <i className="fa-solid fa-rotate-left"></i> 이전양식
+                        </button>
+                      )}
+                    </div>
                     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 items-end">
                       <div className="col-span-1"><label className="block text-xs font-bold text-gray-500 mb-1">플랫폼</label><select value={newCampaign.site} onChange={(e) => setNewCampaign({...newCampaign, site: e.target.value})} className="w-full p-2.5 rounded-xl border border-gray-200 outline-none text-sm bg-white">{sponsorSites.map(site => <option key={site} value={site}>{site}</option>)}</select></div>
                       <div className="col-span-1 md:col-span-2 lg:col-span-1"><label className="block text-xs font-bold text-gray-500 mb-1">상호명 (프로젝트명) *</label><input type="text" value={newCampaign.title} onChange={(e) => setNewCampaign({...newCampaign, title: e.target.value})} className="w-full p-2.5 rounded-xl border border-gray-200 outline-none text-sm" /></div>
                       <div className="col-span-1"><label className="block text-xs font-bold text-gray-500 mb-1">물품 (제공내역)</label><input type="text" value={newCampaign.item} onChange={(e) => setNewCampaign({...newCampaign, item: e.target.value})} className="w-full p-2.5 rounded-xl border border-gray-200 outline-none text-sm" /></div>
                       <div className="col-span-1"><label className="block text-xs font-bold text-gray-500 mb-1">지역</label><input type="text" value={newCampaign.region} onChange={(e) => setNewCampaign({...newCampaign, region: e.target.value})} className="w-full p-2.5 rounded-xl border border-gray-200 outline-none text-sm" /></div>
-                      <div className="col-span-1"><label className="block text-xs font-bold text-gray-500 mb-1">금액</label><input type="text" value={newCampaign.amount} onChange={(e) => setNewCampaign({...newCampaign, amount: e.target.value})} className="w-full p-2.5 rounded-xl border border-gray-200 outline-none text-sm" /></div>
+                      <div className="col-span-1"><label className="block text-xs font-bold text-gray-500 mb-1">금액</label><input type="text" value={newCampaign.amount} onChange={(e) => setNewCampaign({...newCampaign, amount: e.target.value})} placeholder="숫자만" className="w-full p-2.5 rounded-xl border border-gray-200 outline-none text-sm" /></div>
                       <div className="col-span-1"><label className="block text-xs font-bold text-gray-500 mb-1">예약날짜</label><input type="date" value={newCampaign.visitDate} onChange={(e) => setNewCampaign({...newCampaign, visitDate: e.target.value})} className="w-full p-2.5 rounded-xl border border-gray-200 outline-none text-sm" /></div>
                       <div className="col-span-1"><label className="block text-xs font-bold text-gray-500 mb-1">포스팅 기한 *</label><input type="date" value={newCampaign.deadline} onChange={(e) => setNewCampaign({...newCampaign, deadline: e.target.value})} className="w-full p-2.5 rounded-xl border border-gray-200 outline-none text-sm" /></div>
-                      <div className="col-span-1 md:col-span-2 lg:col-span-2"><label className="block text-xs font-bold text-gray-500 mb-1">비고</label><input type="text" value={newCampaign.notes} onChange={(e) => setNewCampaign({...newCampaign, notes: e.target.value})} className="w-full p-2.5 rounded-xl border border-gray-200 outline-none text-sm" /></div>
+                      <div className="col-span-1"><label className="block text-xs font-bold text-gray-500 mb-1">비고</label><input type="text" value={newCampaign.notes} onChange={(e) => setNewCampaign({...newCampaign, notes: e.target.value})} className="w-full p-2.5 rounded-xl border border-gray-200 outline-none text-sm" /></div>
+                      <div className="col-span-1 flex items-end">
+                        <label className="flex items-center gap-2 cursor-pointer p-2.5">
+                          <input type="checkbox" checked={newCampaign.hasPayback} onChange={(e) => setNewCampaign({...newCampaign, hasPayback: e.target.checked})} className="w-4 h-4 rounded border-gray-300 text-[#03C75A] focus:ring-[#03C75A]" />
+                          <span className="text-xs font-semibold text-gray-600">페이백 있음</span>
+                        </label>
+                      </div>
                       <div className="col-span-2 md:col-span-4 lg:col-span-5 flex justify-end mt-2"><button onClick={handleAddCampaign} className="px-8 py-2.5 bg-gray-900 text-white font-semibold rounded-xl flex items-center gap-2 text-sm"><i className="fa-solid fa-plus"></i> 리스트에 추가</button></div>
                     </div>
                   </div>
@@ -1159,41 +1182,47 @@
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 pb-20">
                       {campaigns.filter(c => campaignFilter === '전체' || c.site === campaignFilter).filter(c => statusFilter === '전체' ? true : statusFilter === '진행중' ? c.status === 'pending' : c.status === 'completed').sort((a, b) => {
                           if (a.status === 'completed' && b.status !== 'completed') return 1; if (a.status !== 'completed' && b.status === 'completed') return -1;
                           switch (sortOption) { case '등록순': return a.id - b.id; case '최신순': return b.id - a.id; case '고금액순': return extractNumber(b.amount) - extractNumber(a.amount); case '저금액순': return extractNumber(a.amount) - extractNumber(b.amount); case '마감순': default: return new Date(a.deadline).getTime() - new Date(b.deadline).getTime(); }
                         }).map(campaign => (
-                          <div key={campaign.id} className={`flex flex-col justify-between p-5 rounded-2xl border relative ${campaign.status === 'completed' ? 'bg-gray-50 border-gray-100 opacity-60' : 'bg-white border-gray-200'}`}>
-                            <div className="absolute -top-3 right-4 flex gap-1.5 shadow-sm">
-                               <button onClick={() => toggleExpStatus(campaign.id)} className={`text-[0.625rem] font-bold px-2.5 py-1 rounded-full border ${campaign.expStatus === 'completed' ? 'bg-green-50 text-[#03C75A] border-green-200' : campaign.expStatus === 'shipping' ? 'bg-gray-100 text-gray-600 border-gray-300' : 'bg-white text-gray-400 border-gray-200'}`}>
-                                  {campaign.expStatus === 'completed' ? '🎒 체험완료' : campaign.expStatus === 'shipping' ? '🚚 배송중' : '⏳ 체험전'}
-                                </button>
-                                <button onClick={() => togglePaybackStatus(campaign.id)} className={`text-[0.625rem] font-bold px-2.5 py-1 rounded-full border ${campaign.paybackStatus ? 'bg-green-50 text-green-600 border-green-200' : 'bg-white text-gray-400 border-gray-200'}`}>
-                                    {campaign.paybackStatus ? '💸 페이백완료' : '💳 페이백대기'}
-                                  </button>
-                            </div>
-                            <div>
-                              <div className="flex justify-between items-start mb-2 pt-1">
-                                <div className="flex items-center gap-1.5 flex-wrap">
-                                  <span className={`text-[0.625rem] font-bold px-2 py-0.5 rounded ${campaign.status === 'completed' ? 'bg-gray-200 text-gray-600' : 'bg-gray-800 text-white'}`}>{campaign.site}</span>
-                                  {campaign.region && <span className="text-[0.625rem] font-semibold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">📍 {campaign.region}</span>}
-                                  <span className={`text-[0.625rem] font-bold px-2 py-0.5 rounded ${calculateDDay(campaign.deadline).includes('+') ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-700'}`}>{campaign.status === 'completed' ? '종료' : calculateDDay(campaign.deadline)}</span>
-                                </div>
-                                <button onClick={() => toggleCampaignStatus(campaign.id)} className={`flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center ${campaign.status === 'completed' ? 'bg-[#03C75A] border-[#03C75A]' : 'border-gray-300'}`}>
-                                  {campaign.status === 'completed' && <i className="fa-solid fa-check text-white text-xs"></i>}
-                                </button>
+                          <div key={campaign.id} className={`flex flex-col p-4 md:p-5 rounded-2xl border ${campaign.status === 'completed' ? 'bg-gray-50 border-gray-100 opacity-60' : 'bg-white border-gray-200'}`}>
+                            {/* 상단: 사이트/D-Day/체크 */}
+                            <div className="flex justify-between items-center mb-2">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className={`text-[0.625rem] font-bold px-2 py-0.5 rounded ${campaign.status === 'completed' ? 'bg-gray-200 text-gray-600' : 'bg-gray-800 text-white'}`}>{campaign.site}</span>
+                                <span className={`text-[0.625rem] font-bold px-2 py-0.5 rounded ${calculateDDay(campaign.deadline).includes('+') ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-700'}`}>{campaign.status === 'completed' ? '종료' : calculateDDay(campaign.deadline)}</span>
+                                {campaign.region && <span className="text-[0.625rem] text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">📍{campaign.region}</span>}
                               </div>
-                              <h4 className={`font-bold text-[16px] mt-1 ${campaign.status === 'completed' ? 'text-gray-500 line-through' : 'text-gray-900'}`}>{campaign.title}</h4>
-                              {campaign.item && <p className="text-sm font-medium text-[#03C75A] mt-0.5">{campaign.item}</p>}
+                              <button onClick={() => toggleCampaignStatus(campaign.id)} className={`flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center ${campaign.status === 'completed' ? 'bg-[#03C75A] border-[#03C75A]' : 'border-gray-300'}`}>
+                                {campaign.status === 'completed' && <i className="fa-solid fa-check text-white text-xs"></i>}
+                              </button>
                             </div>
+                            {/* 제목/물품 */}
+                            <h4 className={`font-bold text-base ${campaign.status === 'completed' ? 'text-gray-500 line-through' : 'text-gray-900'}`}>{campaign.title}</h4>
+                            {campaign.item && <p className="text-sm font-medium text-[#03C75A] mt-0.5">{campaign.item}</p>}
+                            {/* 상세 정보 */}
                             <div className="mt-3 pt-3 border-t border-gray-100 flex flex-col gap-1.5 text-xs text-gray-500">
                               {campaign.visitDate && <div className="flex justify-between"><span>예약날짜:</span><span className="font-semibold text-gray-700">{campaign.visitDate}</span></div>}
                               <div className="flex justify-between"><span>포스팅 기한:</span><span className="font-semibold text-gray-700">{campaign.deadline}</span></div>
-                              {campaign.amount && <div className="flex justify-between"><span>금액:</span><span className="font-semibold text-gray-700">{campaign.amount}</span></div>}
-                              {campaign.notes && <div className="flex justify-between mt-1 pt-1 border-t border-gray-50"><span>비고:</span><span className="text-gray-600 truncate max-w-[150px]">{campaign.notes}</span></div>}
+                              {campaign.amount && <div className="flex justify-between"><span>금액:</span><span className="font-semibold text-gray-700">{formatAmount(campaign.amount)}</span></div>}
+                              {campaign.notes && <div className="flex justify-between"><span>비고:</span><span className="text-gray-600 truncate max-w-[180px]">{campaign.notes}</span></div>}
                             </div>
-                            <button onClick={() => deleteCampaign(campaign.id)} className="absolute bottom-4 right-4 text-gray-300 hover:text-red-500 p-1.5 bg-white rounded-lg"><i className="fa-solid fa-trash-can text-base"></i></button>
+                            {/* 하단: 체험/페이백 상태 + 삭제 */}
+                            <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between gap-2">
+                              <div className="flex gap-1.5 flex-wrap">
+                                <button onClick={() => toggleExpStatus(campaign.id)} className={`text-[0.625rem] font-bold px-2 py-1 rounded-lg border ${campaign.expStatus === 'completed' ? 'bg-green-50 text-[#03C75A] border-green-200' : campaign.expStatus === 'shipping' ? 'bg-gray-100 text-gray-600 border-gray-300' : 'bg-white text-gray-400 border-gray-200'}`}>
+                                  {campaign.expStatus === 'completed' ? '🎒 체험완료' : campaign.expStatus === 'shipping' ? '🚚 배송중' : '⏳ 체험전'}
+                                </button>
+                                {campaign.paybackStatus !== null && (
+                                  <button onClick={() => togglePaybackStatus(campaign.id)} className={`text-[0.625rem] font-bold px-2 py-1 rounded-lg border ${campaign.paybackStatus ? 'bg-green-50 text-green-600 border-green-200' : 'bg-white text-gray-400 border-gray-200'}`}>
+                                    {campaign.paybackStatus ? '💸 페이백완료' : '💳 페이백대기'}
+                                  </button>
+                                )}
+                              </div>
+                              <button onClick={() => deleteCampaign(campaign.id)} className="text-gray-300 hover:text-red-500 p-1.5 rounded-lg flex-shrink-0"><i className="fa-solid fa-trash-can text-sm"></i></button>
+                            </div>
                           </div>
                         ))}
                     </div>
